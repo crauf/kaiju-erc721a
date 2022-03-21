@@ -4,18 +4,19 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "erc721a/contracts/ERC721A.sol";
+import "./ERC721A.sol";
 
 contract KaijuKongz is ERC721A, Ownable, AccessControlEnumerable {
-    uint256 constant public maxTotalSupply = 3333;
     uint256 constant public legendarySupply = 9;
     uint256 constant public teamSupply = 30;
 
+    uint256 public maxTotalSupply = 3333;
     uint256 public pricePerToken = 0.065 ether;
     uint256 public tokensBurned = 0;
     bool public promoTokensMinted = false;
     bool public tradeActive = false;
-
+    uint256 public deployedTime;
+    
     enum SaleState{ CLOSED, PRIVATE, PUBLIC }
     SaleState public saleState = SaleState.CLOSED;
 
@@ -26,13 +27,14 @@ contract KaijuKongz is ERC721A, Ownable, AccessControlEnumerable {
     uint8 private maxTokenWlGroup2 = 2;
     uint8 private maxTokenPublic = 5;
 
-    uint256 private disableBurnTime = 6 * 24 * 3600;
+    uint256 private disableBurnTime = 518400;
 
     mapping(address => uint256) presaleMinted;
     mapping(address => uint256) publicMinted;
 
     string _baseTokenURI;
-    uint256 deployedTime;
+    address _burnerAddress;
+ 
 
     constructor() ERC721A("KaijuKongz", "Kai") {
       _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
@@ -100,8 +102,8 @@ contract KaijuKongz is ERC721A, Ownable, AccessControlEnumerable {
       require(presaleMinted[msg.sender] < amountAllowed, "You've already minted all");
       uint256 amountToPay = amount * pricePerToken;
       require(amountToPay <= msg.value, "Provided not enough Ether for purchase");
-      _safeMint(_msgSender(), amount);
       presaleMinted[msg.sender] += amount;
+      _safeMint(_msgSender(), amount);
     }
 
     function publicsale(uint256 amount) public payable {
@@ -111,18 +113,24 @@ contract KaijuKongz is ERC721A, Ownable, AccessControlEnumerable {
       require(amount + publicMinted[msg.sender] <= maxTokenPublic, "Your token amount reached out max");
       uint256 amountToPay = amount * pricePerToken;
       require(amountToPay <= msg.value, "Provided not enough Ether for purchase");
-      _safeMint(_msgSender(), amount);
       publicMinted[msg.sender] += amount;
+      _safeMint(_msgSender(), amount);
     }
 
     function burnMany(uint256[] calldata tokenIds) public {
-      require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "Caller cannot burn");
+      require(_msgSender() == _burnerAddress, "Only burner can burn tokens");
       uint256 nowTime = block.timestamp;
       require(nowTime - deployedTime <= disableBurnTime, "Burn is available only for 6 days");
       for (uint256 i; i < tokenIds.length; i++) {
         _burn(tokenIds[i]);
       }
+      maxTotalSupply -= tokenIds.length;
       tokensBurned += tokenIds.length;
+    }
+
+    function setBurnerAddress(address burnerAddress) public {
+      require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "Caller cannot set burn address");
+      _burnerAddress = burnerAddress;
     }
 
     function _baseURI() internal view virtual override returns (string memory) {
