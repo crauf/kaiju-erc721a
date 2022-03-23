@@ -14,7 +14,6 @@ contract KaijuKongz is ERC721A, Ownable, AccessControlEnumerable {
     uint256 public pricePerToken = 0.065 ether;
     uint256 public tokensBurned = 0;
     bool public promoTokensMinted = false;
-    bool public tradeActive = false;
     uint256 public deployedTime;
     
     enum SaleState{ CLOSED, PRIVATE, PUBLIC }
@@ -39,26 +38,6 @@ contract KaijuKongz is ERC721A, Ownable, AccessControlEnumerable {
     constructor() ERC721A("KaijuKongz", "Kai") {
       _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
       deployedTime = block.timestamp;
-    }
-
-    function safeTransferFrom(address _from, address _to, uint256 _tokenId, bytes calldata data) public override {
-      require(tradeActive, "Trade is not active");
-      super.safeTransferFrom(_from, _to, _tokenId, data);
-    }
-
-    function safeTransferFrom(address _from, address _to, uint256 _tokenId) public override {
-      require(tradeActive, "Trade is not active");
-      super.safeTransferFrom(_from, _to, _tokenId);
-    }
-
-    function transferFrom(address _from, address _to, uint256 _tokenId) public override {
-      require(tradeActive, "Trade is not active");
-      super.transferFrom(_from, _to, _tokenId);
-    }
-
-    function setTradeState(bool tradeState) public {
-      require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "Cannot set trade state");
-      tradeActive = tradeState;
     }
 
     function setPrice(uint256 newPrice) public {
